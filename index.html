@@ -1,0 +1,50 @@
+<html>
+<head>
+<title>Crypto Utils</title>
+<script src="lib/jquery/jquery-1.10.2.min.js"></script>
+<script src="lib/jssha-1.31.min.js"></script>
+<script src="lib/base32.js"></script>
+<script src="lib/cryptojs/hmac-sha1.js"></script>
+
+<script src="js/crypto.js"></script>
+
+<script>
+$(function(){
+
+    //create table header/rows placeholder for totp  display
+    var table$ = $('#get_totp')
+    var providers = CryptoX.providers()
+    for(var i=0;i<providers.length;i++){
+        table$.find('thead tr').append('<th>'+providers[i].name+'</th>');
+        table$.find('tbody tr').append('<td id="'+providers[i].name+'-totp"></td>');
+    }
+        
+    $('#calc-totp').click(function(){
+        var secret = $('#secret').val()
+        
+        var providers = CryptoX.providers()
+        for(var i=0;i<providers.length;i++){
+            var totp = providers[i].get_totp(secret);
+            $('#'+providers[i].name+'-totp').html(totp);
+        }
+    })
+});
+
+
+
+</script>
+</head>
+<body>
+Base32 secret:<input id="secret"></input>
+<button id="calc-totp">Update</button>
+<table id="get_totp">
+<thead>
+<tr></tr>
+</thead>
+<tbody>
+<tr>
+</tr>
+</tbody>
+</table>
+</body>
+</html>
