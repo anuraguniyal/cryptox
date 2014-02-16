@@ -6,10 +6,30 @@
 <script src="lib/base32.js"></script>
 <script src="lib/cryptojs/hmac-sha1.js"></script>
 
+<script src="lib/bitcoinjs.js"></script>
+
 <script src="js/crypto.js"></script>
 
 <script>
 $(function(){
+
+Bitcoin.ECKey.prototype.getBitcoinWalletImportFormat = function () {
+    var bytes = this.getBitcoinPrivateKeyByteArray();
+    bytes.unshift(0x80); // prepend 0x80 byte
+    if (this.compressed) bytes.push(0x01); // append 0x01 byte for compressed format
+    var checksum = Crypto.SHA256(Crypto.SHA256(bytes, { asBytes: true }), { asBytes: true });
+    bytes = bytes.concat(checksum.slice(0, 4));
+    var privWif = Bitcoin.Base58.encode(bytes);
+    return privWif;
+};
+
+Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
+    // Get a copy of private key as a byte array
+    var bytes = this.priv.toByteArrayUnsigned();
+    // zero pad if private key is less than 32 bytes 
+    while (bytes.length < 32) bytes.unshift(0x00);
+    return bytes;
+};
 
     //create table header/rows placeholder for totp  display
     var table$ = $('#get_totp')
@@ -18,16 +38,26 @@ $(function(){
         table$.find('thead tr').append('<th>'+providers[i].name+'</th>');
         table$.find('tbody tr').append('<td id="'+providers[i].name+'-totp"></td>');
     }
-        
+
     $('#calc-totp').click(function(){
         var secret = $('#secret').val()
-        
         var providers = CryptoX.providers()
         for(var i=0;i<providers.length;i++){
             var totp = providers[i].get_totp(secret);
             $('#'+providers[i].name+'-totp').html(totp);
         }
-    })
+    });
+    
+    $('#btn-bitcoin-details').click(function(){
+        var privkey = $('#bitcoin-priv-key').val()
+        var privbytes = Crypto.util.hexToBytes(privkey)
+        var key = new Bitcoin.ECKey(privbytes);
+        var html = []
+        html.push("Address: "+key.getBitcoinAddress().toString());
+        html.push("Private Wif Key: "+key.getBitcoinWalletImportFormat());
+        $('#bitcoin-details').html(html.join("<br/>"));
+    });
+
 });
 
 
@@ -35,6 +65,7 @@ $(function(){
 </script>
 </head>
 <body>
+<h2>Get Google 2 factor code</h2>
 Base32 secret:<input id="secret"></input>
 <button id="calc-totp">Update</button>
 <table id="get_totp">
@@ -46,5 +77,10 @@ Base32 secret:<input id="secret"></input>
 </tr>
 </tbody>
 </table>
+
+<h2>Get Bitcoin Details:</h2>
+Private Key Sha256 hash:<input id="bitcoin-priv-key"></input>
+<button id="btn-bitcoin-details">Bitcoin Details</button>
+<div id="bitcoin-details"></div>
 </body>
 </html>
