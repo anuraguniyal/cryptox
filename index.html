@@ -41,6 +41,8 @@ Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
 
     $('#calc-totp').click(function(){
         var secret = $('#secret').val()
+        // remove spaces
+	secret = secret.replace(/\s+/g, '');
         var providers = CryptoX.providers()
         for(var i=0;i<providers.length;i++){
             var totp = providers[i].get_totp(secret);
