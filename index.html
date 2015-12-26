@@ -1,11 +1,19 @@
 <html>
 <head>
 <title>Crypto Utils</title>
+<style>
+input {
+  width: 500px;
+}
+
+</style>
 <script src="lib/jquery/jquery-1.10.2.min.js"></script>
 <script src="lib/jssha-1.31.min.js"></script>
 <script src="lib/base32.js"></script>
 <script src="lib/cryptojs/hmac-sha1.js"></script>
-
+<script src="lib/cryptojs/sha256.js"></script>
+<script src="lib/cryptojs/aes.js"></script>
+<script src="lib/sjcl/core.js"></script>
 <script src="lib/bitcoinjs.js"></script>
 
 <script src="js/crypto.js"></script>
@@ -26,37 +34,81 @@ Bitcoin.ECKey.prototype.getBitcoinWalletImportFormat = function () {
 Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
     // Get a copy of private key as a byte array
     var bytes = this.priv.toByteArrayUnsigned();
-    // zero pad if private key is less than 32 bytes 
+    // zero pad if private key is less than 32 bytes
     while (bytes.length < 32) bytes.unshift(0x00);
     return bytes;
 };
 
-    //create table header/rows placeholder for totp  display
-    var table$ = $('#get_totp')
-    var providers = CryptoX.providers()
-    for(var i=0;i<providers.length;i++){
-        table$.find('thead tr').append('<th>'+providers[i].name+'</th>');
-        table$.find('tbody tr').append('<td id="'+providers[i].name+'-totp"></td>');
+    function show_results(method_name, elem){
+        var args = Array.prototype.slice.call(arguments, 2);
+        var results = CryptoX.method(method_name).apply(CryptoX, args)
+        var html = []
+
+        for(var i=0; i < results.length; i++){
+            var provider = results[i][0]
+            var result = results[i][1]
+            var error = results[i][2]
+            var h = provider.name+" <b>"+result+"</b>"
+            if(error) h += " <i>"+error+"</i>"
+            html.push(h);
+        }
+        if(results.length == 0) html = ["No crypto providers"]
+        $(elem).html(html.join("<br>"))
+
     }
+
+    function aes_clicked(decrypt){
+        var secret = $('#aes-secret').val()
+        var text_in = $('#aes-text').val()
+        // remove spaces
+        text_in = text_in.replace(/\s+/g, '');
+	    secret = secret.replace(/\s+/g, '');
+        var method = 'aes_encrypt'
+        if(decrypt)
+          method = 'aes_decrypt'
+
+        show_results(method, $('#aes-info'), text_in, secret)
+    }
+
+    $('#aes-decrypt').click(function(){
+        aes_clicked(true)
+    });
+
 
     $('#calc-totp').click(function(){
         var secret = $('#secret').val()
         // remove spaces
-	secret = secret.replace(/\s+/g, '');
-        var providers = CryptoX.providers()
-        for(var i=0;i<providers.length;i++){
-            var totp = providers[i].get_totp(secret);
-            $('#'+providers[i].name+'-totp').html(totp);
-        }
+	    secret = secret.replace(/\s+/g, '');
+        show_results('get_totp', $('#totp'), secret)
     });
-    
+
+    $('#btn-eval-code').click(function(){
+        var code = $('#eval-code').val()
+        // set global s to sha256
+        s = CryptoX.provider('cryptojs').sha256
+        try{
+            var html = eval(code)
+        }catch(e){
+            var html = "Error:"+e
+        }
+        $('#eval-details').html(html)
+    });
+
     $('#btn-bitcoin-details').click(function(){
         var privkey = $('#bitcoin-priv-key').val()
-        var privbytes = Crypto.util.hexToBytes(privkey)
+        var type = $('#bitcoin-priv-key-type').val()
+        if(type == 'wif'){
+          var privbytes = Bitcoin.Base58.decode(privkey);
+          privbytes = privbytes.slice(1,privbytes.length-4)
+        }else{
+          var privbytes = Crypto.util.hexToBytes(privkey)
+        }
+        console.log(privbytes)
         var key = new Bitcoin.ECKey(privbytes);
         var html = []
         html.push("Address: "+key.getBitcoinAddress().toString());
         html.push("Private Wif Key: "+key.getBitcoinWalletImportFormat());
+        html.push("Private Hex Key: "+key.toString());
         $('#bitcoin-details').html(html.join("<br/>"));
     });
 
@@ -67,22 +119,30 @@ Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
 </script>
 </head>
 <body>
+<h2>AES decrypt</h2>
+Text:<br><textarea id="aes-text" style="width:500px"></textarea><br>
+Secret:<br><input id="aes-secret"></input>
+<button id="aes-decrypt">Decrypt</button>
+<div id="aes-info"></div>
+
 <h2>Get Google 2 factor code</h2>
-Base32 secret:<input id="secret"></input>
+Base32 secret:<br><input id="secret"></input>
 <button id="calc-totp">Update</button>
-<table id="get_totp">
-<thead>
-<tr></tr>
-</thead>
-<tbody>
-<tr>
-</tr>
-</tbody>
-</table>
+<div id="totp"></div>
 
 <h2>Get Bitcoin Details:</h2>
-Private Key Sha256 hash:<input id="bitcoin-priv-key"></input>
+Private Key:<br><input id="bitcoin-priv-key"></input>
+<select id="bitcoin-priv-key-type">
+    <option value="wif">WIF</option>
+    <option value="hex">HEX</option>
+</select>
 <button id="btn-bitcoin-details">Bitcoin Details</button>
 <div id="bitcoin-details"></div>
+
+<h2>Eval javascript(sha256 available as s):</h2>
+Code: <br><input id="eval-code"></input>
+<button id="btn-eval-code">Evaluate</button>
+<div id="eval-details"></div>
+
 </body>
 </html>
