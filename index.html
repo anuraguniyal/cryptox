@@ -1,7 +1,11 @@
 <html>
 <head>
 <title>Crypto Utils</title>
+<link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
 <style>
+body {
+    font-family: 'Lato', sans-serif;
+}
 input {
   width: 500px;
 }
@@ -13,8 +17,9 @@ input {
 <script src="lib/cryptojs/hmac-sha1.js"></script>
 <script src="lib/cryptojs/sha256.js"></script>
 <script src="lib/cryptojs/aes.js"></script>
-<script src="lib/sjcl/core.js"></script>
+<script src="lib/sjcl/sjcl.js"></script>
 <script src="lib/bitcoinjs.js"></script>
+<script src="lib/jslib.js"></script>
 
 <script src="js/crypto.js"></script>
 
@@ -94,24 +99,86 @@ Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
         $('#eval-details').html(html)
     });
 
-    $('#btn-bitcoin-details').click(function(){
+    function get_priv_key(){
         var privkey = $('#bitcoin-priv-key').val()
-        var type = $('#bitcoin-priv-key-type').val()
+        var type = $('#bitcoin-priv-key-type').val();
         if(type == 'wif'){
-          var privbytes = Bitcoin.Base58.decode(privkey);
-          privbytes = privbytes.slice(1,privbytes.length-4)
+          var keyPair = jslib.bitcoin.ECPair.fromWIF(privkey)
         }else{
-          var privbytes = Crypto.util.hexToBytes(privkey)
+          var d = jslib.BigInteger.fromHex(privkey);
+          console.log(privkey, d, keyPair)
+          var keyPair = new jslib.bitcoin.ECPair(d);
+          keyPair.compressed = false
         }
-        console.log(privbytes)
-        var key = new Bitcoin.ECKey(privbytes);
+
+        return keyPair
+    }
+
+    $('#btn-bitcoin-details').click(function(){
+        var keyPair = get_priv_key()
+
         var html = []
-        html.push("Address: "+key.getBitcoinAddress().toString());
-        html.push("Private Wif Key: "+key.getBitcoinWalletImportFormat());
-        html.push("Private Hex Key: "+key.toString());
+
+        html.push("Address: "+keyPair.getAddress());
+        html.push("Private Wif Key: "+keyPair.toWIF());
+        html.push("Private Hex Key: "+keyPair.d.toHex());
+
         $('#bitcoin-details').html(html.join("<br/>"));
     });
 
+    $('#btn-bitcoin-sign-msg').click(function(){
+        var keyPair = get_priv_key()
+        var msg = $('#bitcoin-msg').val();
+
+        var signature = jslib.bitcoin.message.sign(keyPair, msg)
+        var html = ["Signed Message"];
+        html.push(signature.toString('base64'));
+        html.push("Address: "+keyPair.getAddress());
+        $('#bitcoin-details').html(html.join("<br/>"));
+
+    });
+
+
+    $('#btn-bitcoin-txn').click(function(){
+        var keyPair = get_priv_key()
+        var inTxn = $('#bitcoin-txn-input1-txn').val();
+        var inIndex = parseFloat($('#bitcoin-txn-input1-index').val());
+        var inAmount = parseFloat($('#bitcoin-txn-input1-amount').val());
+        var toAddress = $('#bitcoin-txn-to').val();
+        var amount = parseFloat($('#bitcoin-txn-amount').val());
+        var fees = parseFloat($('#bitcoin-txn-fees').val());
+
+        var fromAddress = keyPair.getAddress()
+
+        btc2satoshi = 100000000;
+
+        // convert to satoshi
+        inAmount = parseInt(inAmount*btc2satoshi)
+        amount = parseInt(amount*btc2satoshi)
+        fees = parseInt(fees*btc2satoshi)
+        console.log(inAmount, amount, fees)
+        remain = inAmount - amount - fees
+
+        var tx = new jslib.bitcoin.TransactionBuilder();
+        tx.addInput(inTxn, inIndex);
+        tx.addOutput(toAddress, amount);
+        if(remain > 0)
+        tx.addOutput(fromAddress, remain);
+        tx.sign(0, keyPair);
+
+        var html = ["Bitcoin Transaction"];
+        html.push("From: "+fromAddress);
+        html.push("To: "+toAddress);
+        html.push("Amount: "+amount/btc2satoshi);
+        html.push("Fees: "+fees/btc2satoshi)
+        html.push("return: "+remain/btc2satoshi);
+        html.push("-----------------------")
+        html.push(tx.build().toHex());
+        html.push("-----------------------")
+
+        $('#bitcoin-details').html(html.join("<br/>"));
+
+    });
 });
 
 
@@ -137,6 +204,20 @@ Private Key:<br><input id="bitcoin-priv-key"></input>
     <option value="hex">HEX</option>
 </select>
 <button id="btn-bitcoin-details">Bitcoin Details</button>
+<br>
+Message:<br><textarea id="bitcoin-msg"  style="width:500px;height:80px;"></textarea>
+<button id="btn-bitcoin-sign-msg">Sign</button>
+<br>
+To / Amount / Fees:<br>
+<input id="bitcoin-txn-to"  style="width:400px;"></input>
+<input id="bitcoin-txn-amount"  style="width:50px;"></input>
+<input id="bitcoin-txn-fees"  style="width:50px;"></input>
+<br>
+Input Txn / Index / Amount:<br>
+<input id="bitcoin-txn-input1-txn"  style="width:420px;"></input>
+<input id="bitcoin-txn-input1-index"  style="width:30px;"></input>
+<input id="bitcoin-txn-input1-amount"  style="width:50px;"></input>
+<button id="btn-bitcoin-txn">Create Txn</button>
 <div id="bitcoin-details"></div>
 
 <h2>Eval javascript(sha256 available as s):</h2>
