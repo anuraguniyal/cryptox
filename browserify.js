@@ -3,7 +3,8 @@ var jslib = {
   bitcoin: require('bitcoinjs-lib'),
   ecurve: require('ecurve'),
   BigInteger: require('bigi'),
-  Buffer: require('buffer')
+  Buffer: require('buffer'),
+  bch: require('bitcoincashjs')
 }
 
 module.exports = jslib
