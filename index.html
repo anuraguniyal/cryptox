@@ -276,16 +276,15 @@ Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
 </script>
 </head>
 <body>
-<h2>AES decrypt</h2>
-Text:<br><textarea id="aes-text" style="width:500px"></textarea><br>
-Secret:<br><input id="aes-secret"></input>
-<button id="aes-decrypt">Decrypt</button>
-<div id="aes-info"></div>
-
 <h2>Get Google 2 factor code</h2>
 Base32 secret:<br><input id="secret"></input>
 <button id="calc-totp">Update</button>
 <div id="totp"></div>
+
+<h2>Generate password on random.org</h2>
+<a target="_blank" href="https://www.random.org/passwords/?num=1&len=10&format=html&rnd=new">
+    Generate
+<a/>
 
 <h2>Get Bitcoin Details:</h2>
 Private Key: &nbsp; &nbsp;<input id="bitcoin-cash-mode" type="checkbox" style="width:auto"/><small>Bitcoin Cash</small><br><input id="bitcoin-priv-key"></input>
@@ -314,6 +313,12 @@ Input Txn / Index / Amount:<br>
 Code: <br><input id="eval-code"></input>
 <button id="btn-eval-code">Evaluate</button>
 <div id="eval-details"></div>
+
+<h2>AES decrypt</h2>
+Text:<br><textarea id="aes-text" style="width:500px"></textarea><br>
+Secret:<br><input id="aes-secret"></input>
+<button id="aes-decrypt">Decrypt</button>
+<div id="aes-info"></div>
 
 <h2>Check Balance:</h2>
 Addresses: <br><textarea id="addresses" style="width:500px;height:100px;"></textarea>
