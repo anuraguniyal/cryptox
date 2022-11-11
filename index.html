@@ -132,6 +132,24 @@ Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
         return keyPair
     }
 
+    function generate_addresses(text, n){
+       var addresses = []
+       for(var i=0;i<n;i++){
+           var s = CryptoX.provider('cryptojs').sha256
+           // replace {n} with number
+           new_text = text.replaceAll('{n}', i);
+           console.log(new_text)
+           var hexkey = eval(new_text);
+           var d = jslib.BigInteger.fromHex(hexkey);
+           var keyPair = new jslib.bitcoin.ECPair(d);
+           console.log(hexkey, d, keyPair)
+           keyPair.compressed = false
+           var address = keyPair.getAddress();
+           addresses.push(address)
+       }
+       return addresses
+    }
+
     $('#btn-bitcoin-details').click(function(){
         var keyPair = get_priv_key()
 
@@ -244,10 +262,25 @@ Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
     $('#btn-check-balance').click(async function(){
         var text = $('#addresses').val();
         var addresses = text.split(/,?\s+/);
+        // special adress handling
+        var new_addresses = []
+        for(var i=0;i<addresses.length;i++){
+            var text = addresses[i]
+            var tokens = text.split(":")
+            if(tokens[0] == "tmpl"){
+                var n = parseInt(tokens[1])
+                l = generate_addresses(tokens[2], n)
+                new_addresses = new_addresses.concat(l);
+            }else{
+                new_addresses.push(addresses[i]);
+            }
+        }
+        addresses=new_addresses;
         var results = [];
         console.log(addresses);
         for(var i=0;i<addresses.length;i++){
-            var r = $.get('https://blockchain.info/q/addressbalance/'+addresses[i]);
+            //var r = $.get('https://blockchain.info/q/addressbalance/'+addresses[i]);
+            var r = $.get('https://api.blockcypher.com/v1/btc/main/addrs/'+addresses[i]+'/balance');
             await sleep(500);
             results.push(r);
         }
@@ -260,9 +293,10 @@ Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
             console.log(r)
             var total = 0;
             for(var i=0;i<r.length;i++){
-                var v = parseInt(r[i][0])/btc2satoshi;
+                //var v = parseInt(r[i][0])/btc2satoshi;
+                var v = parseInt(r[i][0]['balance'])/btc2satoshi;
                 total += v;
-                html.push(addresses[i] + " "+v);
+                html.push(i+"> "+addresses[i] + " "+v);
             }
             html.push("Total "+total);
             $('#balance-details').html(html.join("<br/>"));
@@ -321,7 +355,7 @@ Secret:<br><input id="aes-secret"></input>
 <div id="aes-info"></div>
 
 <h2>Check Balance:</h2>
-Addresses: <br><textarea id="addresses" style="width:500px;height:100px;"></textarea>
+Addresses:( for template give tmpl:N:eval_string) <br><textarea id="addresses" style="width:500px;height:100px;"></textarea>
 <button id="btn-check-balance">Check</button>
 <div id="balance-details"></div>
 </body>
