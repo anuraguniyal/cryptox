@@ -278,10 +278,16 @@ Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
         addresses=new_addresses;
         var results = [];
         console.log(addresses);
+        api_type = "blockchain.info"
+        api_type = "blockcypher.com"
         for(var i=0;i<addresses.length;i++){
-            //var r = $.get('https://blockchain.info/q/addressbalance/'+addresses[i]);
-            var r = $.get('https://api.blockcypher.com/v1/btc/main/addrs/'+addresses[i]+'/balance');
-            await sleep(500);
+            if(api_type == "blockchain.info"){
+                var r = $.get('https://blockchain.info/rawaddr/'+addresses[i]+'/?limit=0&cors=true');
+                await sleep(100);
+            }else{
+                var r = $.get('https://api.blockcypher.com/v1/btc/main/addrs/'+addresses[i]+'/balance');
+                await sleep(500);
+            }
             results.push(r);
         }
         var html = [];
@@ -290,11 +296,15 @@ Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
             if(addresses.length==1){
                 r=[r];
             }
-            console.log(r)
             var total = 0;
             for(var i=0;i<r.length;i++){
-                //var v = parseInt(r[i][0])/btc2satoshi;
-                var v = parseInt(r[i][0]['balance'])/btc2satoshi;
+                var ri = r[i][0];
+                console.log(ri)
+                if(api_type == "blockchain.info"){
+                    var v = parseInt(ri['final_balance'])/btc2satoshi;
+                }else{
+                    var v = parseInt(ri['balance'])/btc2satoshi;
+                }
                 total += v;
                 html.push(i+"> "+addresses[i] + " "+v);
             }
