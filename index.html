@@ -278,41 +278,71 @@ Bitcoin.ECKey.prototype.getBitcoinPrivateKeyByteArray = function () {
         addresses=new_addresses;
         var results = [];
         console.log(addresses);
-        api_type = "blockchain.info"
-        api_type = "blockcypher.com"
+        var api_type = $('#bitcoin-balance-api').val();
         for(var i=0;i<addresses.length;i++){
             if(api_type == "blockchain.info"){
-                var r = $.get('https://blockchain.info/rawaddr/'+addresses[i]+'/?limit=0&cors=true');
-                await sleep(100);
+                //var r = $.get('https://blockchain.info/rawaddr/'+addresses[i]+'/?limit=0');
+                //await sleep(100);
             }else{
                 var r = $.get('https://api.blockcypher.com/v1/btc/main/addrs/'+addresses[i]+'/balance');
                 await sleep(500);
             }
             results.push(r);
         }
-        var html = [];
-        $.when(...results).then(function(...r){
-            //jquery treat once deferred as different :(
-            if(addresses.length==1){
-                r=[r];
-            }
+
+        function update_balance(){
             var total = 0;
-            for(var i=0;i<r.length;i++){
-                var ri = r[i][0];
-                console.log(ri)
-                if(api_type == "blockchain.info"){
-                    var v = parseInt(ri['final_balance'])/btc2satoshi;
-                }else{
-                    var v = parseInt(ri['balance'])/btc2satoshi;
-                }
+            var html = [];
+            for(var i=0;i<addresses.length;i++){
+                var addr = addresses[i];
+                var v = balances[addr];
+                console.log("---balances", balances, typeof balances)
+                window.balances = balances
+                console.log(balances[addr], balances['1KXwRAVeCjtyu1nneobhU76tPFkm3QAuYv'], addr);
                 total += v;
-                html.push(i+"> "+addresses[i] + " "+v);
+                html.push(i+"> "+addr + " "+v);
             }
             html.push("Total "+total);
             $('#balance-details').html(html.join("<br/>"));
-        });
+        }
+
+        var balances = {};
+        if(api_type == "blockchain.info"){ //bulk api
+            var bstr = addresses.join("|")
+            var r = $.get("https://blockchain.info/balance?active="+bstr);
+            $.when(r).then(function(r){
+                console.log("---bulk",r)
+                for(var i=0;i<addresses.length;i++){
+                    var addr = addresses[i];
+                    var v = parseInt(r[addr].final_balance)/btc2satoshi;
+                    balances[addr]=v;
+                }
+                update_balance();
+            });
+        }else{
+            $.when(...results).then(function(...r){
+                //jquery treat once deferred as different :(
+                if(addresses.length==1){
+                    r=[r];
+                }
+                console.log("---result",r)
+                for(var i=0;i<r.length;i++){
+                    var ri = r[i][0];
+                    console.log(ri)
+                    if(api_type == "blockchain.info"){
+                        var v = parseInt(ri['final_balance'])/btc2satoshi;
+                    }else{
+                        var v = parseInt(ri['balance'])/btc2satoshi;
+                    }
+                    balances[addresses[i]]=v
+                }
+                update_balance();
+            });
+        }
 
     });
+
+
 });
 
 
@@ -364,8 +394,13 @@ Secret:<br><input id="aes-secret"></input>
 <button id="aes-decrypt">Decrypt</button>
 <div id="aes-info"></div>
 
-<h2>Check Balance:</h2>
-Addresses:( for template give tmpl:N:eval_string) <br><textarea id="addresses" style="width:500px;height:100px;"></textarea>
+<h2>Check Balance:
+<select id="bitcoin-balance-api">
+    <option value="blockchain.info">blockchain.info</option>
+    <option value="blockcypher.com">blockcypher.com</option>
+</select>
+</h2>
+Addresses:( for template give tmpl:N:eval_string{n}) <br><textarea id="addresses" style="width:500px;height:100px;"></textarea>
 <button id="btn-check-balance">Check</button>
 <div id="balance-details"></div>
 </body>
